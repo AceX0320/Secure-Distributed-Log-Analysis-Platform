@@ -1,0 +1,31 @@
+# ============================================
+# Secure Distributed Log Analysis Platform
+# Python Dependencies
+# ============================================
+
+# --- Kafka ---
+kafka-python==2.0.2
+
+# --- Spark ---
+pyspark==3.5.3
+
+# --- Machine Learning ---
+scikit-learn==1.5.2
+joblib==1.4.2
+numpy==1.26.4
+pandas==2.2.3
+
+# --- Dashboard ---
+flask==3.1.0
+flask-socketio==5.4.1
+eventlet==0.37.0
+
+# --- Visualization ---
+plotly==5.24.1
+
+# --- Utilities ---
+python-dateutil==2.9.0
+colorama==0.4.6
+
+# --- Testing ---
+pytest==8.3.4
