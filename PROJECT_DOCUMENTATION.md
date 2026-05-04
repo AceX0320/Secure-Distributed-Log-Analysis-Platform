@@ -128,12 +128,11 @@ Verify infrastructure is healthy:
 - Spark Master UI: http://localhost:8080
 - Spark Worker UI: http://localhost:8081
 
-### Step 3: Start the Spark Processor *(new terminal)*
-The Spark processor runs **inside** the `spark-master` Docker container to avoid any local Java/Hadoop dependency issues:
+The Spark processor runs **inside** the `spark-master` Docker container to avoid local environment issues. It is configured with an `earliest` offset policy to ensure no data loss:
 ```bash
-docker exec -e SPARK_KAFKA_BOOTSTRAP=kafka:9092 -e SPARK_CHECKPOINT_DIR=/tmp/checkpoints spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 --conf spark.jars.ivy=/tmp/.ivy2 /app/processing/spark_processor.py
+docker exec spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 /app/processing/spark_processor.py
 ```
-You should see: `[SparkProcessor] Streaming queries started. Waiting for data...`
+You should see: `[SparkProcessor] Streaming queries started. Waiting for data...`. The job will automatically resume from the last checkpoint or catch up on all pending logs.
 
 ### Step 4: Start the Dashboard *(new terminal)*
 ```bash
@@ -141,11 +140,10 @@ python dashboard/app.py
 ```
 *The dashboard will host on `http://localhost:5000`.*
 
-You should see:
-```
 [DashboardConsumer] Connected to topic: processed-logs
 [DashboardConsumer] Connected to topic: anomalous-logs
 ```
+The dashboard will now automatically sync with the database and Kafka history on load.
 
 ### Step 5: Monitor Real-Time
 Open your web browser and navigate to [http://localhost:5000](http://localhost:5000). You will immediately see events streaming in, charts rendering dynamically, and cyber threats appearing in the Live Threat Feed.

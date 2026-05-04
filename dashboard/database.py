@@ -21,7 +21,9 @@ class LogDatabase:
 
     def __init__(self, db_path=None):
         self.db_path = db_path or DATABASE_PATH
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
         self._local = threading.local()
         self._init_db()
 
@@ -38,7 +40,7 @@ class LogDatabase:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT, agent TEXT, event_type TEXT,
+                timestamp TEXT, agent TEXT, sequence INTEGER, event_type TEXT,
                 severity TEXT, severity_score INTEGER,
                 source_ip TEXT, dest_ip TEXT, port INTEGER,
                 protocol TEXT, user TEXT, message TEXT,
@@ -53,6 +55,7 @@ class LogDatabase:
             CREATE INDEX IF NOT EXISTS idx_logs_anomaly ON logs(ml_is_anomaly);
             CREATE INDEX IF NOT EXISTS idx_logs_source_ip ON logs(source_ip);
             CREATE INDEX IF NOT EXISTS idx_logs_severity ON logs(severity);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_agent_seq ON logs(agent, sequence);
 
             CREATE TABLE IF NOT EXISTS statistics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,28 +64,32 @@ class LogDatabase:
             );
         """)
         conn.commit()
+        # Migration: Add sequence column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE logs ADD COLUMN sequence INTEGER")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass # Column already exists
 
     def insert_log(self, log_data):
         conn = self._get_conn()
         conn.execute("""
-            INSERT INTO logs (timestamp, agent, event_type, severity,
+            INSERT OR IGNORE INTO logs (timestamp, agent, sequence, event_type, severity,
                 severity_score, source_ip, dest_ip, port, protocol,
                 user, message, bytes_transferred, status_code, url,
                 is_anomaly, anomaly_score, ml_is_anomaly, threat_type, threat_level)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             log_data.get("timestamp"), log_data.get("agent"),
-            log_data.get("event_type"), log_data.get("severity"),
-            log_data.get("severity_score"), log_data.get("source_ip"),
-            log_data.get("dest_ip"), log_data.get("port"),
-            log_data.get("protocol"), log_data.get("user"),
-            log_data.get("message"), log_data.get("bytes_transferred"),
-            log_data.get("status_code"), log_data.get("url"),
-            log_data.get("is_anomaly", False),
-            log_data.get("anomaly_score", 0.0),
-            log_data.get("ml_is_anomaly", False),
-            log_data.get("threat_type", ""),
-            log_data.get("threat_level", ""),
+            log_data.get("sequence"), log_data.get("event_type"),
+            log_data.get("severity"), log_data.get("severity_score"),
+            log_data.get("source_ip"), log_data.get("dest_ip"),
+            log_data.get("port"), log_data.get("protocol"),
+            log_data.get("user"), log_data.get("message"),
+            log_data.get("bytes_transferred"), log_data.get("status_code"),
+            log_data.get("url"), log_data.get("is_anomaly", False),
+            log_data.get("anomaly_score", 0.0), log_data.get("ml_is_anomaly", False),
+            log_data.get("threat_type", ""), log_data.get("threat_level", ""),
         ))
         conn.commit()
         self._cleanup_if_needed()

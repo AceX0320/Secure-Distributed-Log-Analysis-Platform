@@ -68,7 +68,7 @@ class DashboardConsumer:
                         bootstrap_servers=self.bootstrap_servers,
                         group_id=f"{KAFKA_DASHBOARD_GROUP}-{topic}",
                         value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-                        auto_offset_reset="latest",
+                        auto_offset_reset="earliest",
                         enable_auto_commit=True,
                         consumer_timeout_ms=1000,
                         api_version=(3, 5, 0),

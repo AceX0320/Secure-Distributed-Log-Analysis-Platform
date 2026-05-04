@@ -38,9 +38,7 @@ A production-grade distributed platform for scalable security log analysis featu
 
 > **Note:** Java and Hadoop are **NOT** required on your local machine. The Spark processor runs entirely inside the Docker container, so no local Java/Hadoop setup is needed.
 
-## Quick Start
-
-Follow these steps **in order**. Each step depends on the previous one.
+Follow these steps **in order** to ensure data synchronization and persistence. The system is now configured to automatically catch up on any logs produced while components are offline.
 
 ### Step 1: Install Python Dependencies
 
@@ -62,17 +60,15 @@ Wait ~30 seconds for services to become healthy. Verify:
 * Spark Master UI: http://localhost:8080
 * Spark Worker UI: http://localhost:8081
 
-### Step 3: Start the Spark Processor *(new terminal)*
-
-Run the PySpark stream processing job inside the `spark-master` container. This reads from the `raw-logs` Kafka topic, applies anomaly detection rules, and writes results to `processed-logs` and `anomalous-logs` topics:
+Run the PySpark stream processing job inside the `spark-master` container. This job extracts features, calculates anomaly scores, and routes logs to the correct topics.
 
 ```bash
-docker exec -e SPARK_KAFKA_BOOTSTRAP=kafka:9092 -e SPARK_CHECKPOINT_DIR=/tmp/checkpoints spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 --conf spark.jars.ivy=/tmp/.ivy2 /app/processing/spark_processor.py
+docker exec spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 /app/processing/spark_processor.py
 ```
 
-You should see `[SparkProcessor] Streaming queries started. Waiting for data...` once it is ready.
+You should see `[SparkProcessor] Streaming queries started. Waiting for data...` once it is ready. It will automatically catch up on any logs sent to Kafka while it was offline.
 
-### Step 4: Start the Dashboard *(new terminal bala4 8bawa w7yat ahlk)*
+### Step 4: Start the Dashboard *(new terminal)*
 
 ```bash
 python dashboard/app.py
@@ -95,6 +91,14 @@ python models/train_model.py
 ```
 
 This generates 10,000 synthetic logs, trains an Isolation Forest model, and saves it to `models/isolation_forest_model.pkl`.
+
+## Data Synchronization & Persistence
+
+The platform is designed to handle intermittent service interruptions:
+*   **Kafka Persistence**: Kafka stores data in persistent Docker volumes.
+*   **Spark Checkpoints**: Spark uses the `./checkpoints` directory to track its progress. If you restart the processor, it resumes exactly where it left off.
+*   **Database Sync**: The dashboard automatically fetches recent history from `logs.db` on load, and its Kafka consumer uses an `earliest` policy to ensure no processed logs are missed during downtime.
+*   **Duplicate Prevention**: The database uses a unique constraint on `(agent, sequence)` to ensure that re-processed logs do not create duplicate entries.
 
 ## Shutdown
 

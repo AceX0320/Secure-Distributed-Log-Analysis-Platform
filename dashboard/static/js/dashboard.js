@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSocket();
     initCharts();
     startUptime();
+    initFeeds();
     startPeriodicRefresh();
 });
 
@@ -158,6 +159,38 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+// ============================================================
+// Initial Feed Population
+// ============================================================
+function initFeeds() {
+    // Recent Anomalies
+    fetch('/api/recent-anomalies')
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.length) return;
+            // Clear existing and add from oldest to newest (so newest is top)
+            const feed = document.getElementById('threat-feed');
+            feed.innerHTML = '';
+            data.reverse().forEach(item => addToFeed('threat-feed', item, true));
+            state.threatCount = data.length;
+            updateThreatCount();
+        })
+        .catch(err => console.error('Error fetching recent anomalies:', err));
+
+    // Recent Logs
+    fetch('/api/recent-logs')
+        .then(r => r.json())
+        .then(data => {
+            if (!data || !data.length) return;
+            const feed = document.getElementById('log-feed');
+            feed.innerHTML = '';
+            data.reverse().forEach(item => addToFeed('log-feed', item));
+            state.totalEvents = data.length; // Approximate from recent
+            updateLogCount();
+        })
+        .catch(err => console.error('Error fetching recent logs:', err));
 }
 
 // ============================================================

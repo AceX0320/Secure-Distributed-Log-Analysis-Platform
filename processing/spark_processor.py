@@ -98,7 +98,7 @@ def main():
         .format("kafka")
         .option("kafka.bootstrap.servers", SPARK_KAFKA_BOOTSTRAP)
         .option("subscribe", KAFKA_TOPIC_RAW_LOGS)
-        .option("startingOffsets", "latest")
+        .option("startingOffsets", "earliest")
         .option("failOnDataLoss", "false")
         .load()
     )
