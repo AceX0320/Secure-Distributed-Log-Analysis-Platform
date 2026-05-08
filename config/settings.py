@@ -10,7 +10,7 @@ import os
 # ============================================================
 # Kafka Configuration
 # ============================================================
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9094")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "127.0.0.1:9094")
 KAFKA_TOPIC_RAW_LOGS = os.getenv("KAFKA_TOPIC_RAW", "raw-logs")
 KAFKA_TOPIC_PROCESSED_LOGS = os.getenv("KAFKA_TOPIC_PROCESSED", "processed-logs")
 KAFKA_TOPIC_ANOMALOUS_LOGS = os.getenv("KAFKA_TOPIC_ANOMALOUS", "anomalous-logs")

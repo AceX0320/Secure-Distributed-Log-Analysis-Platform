@@ -13,8 +13,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from kafka import KafkaConsumer
-from kafka.errors import NoBrokersAvailable
+from confluent_kafka import Consumer, KafkaError, KafkaException
 
 from config.settings import (
     KAFKA_BOOTSTRAP_SERVERS, KAFKA_TOPIC_PROCESSED_LOGS,
@@ -63,33 +62,60 @@ class DashboardConsumer:
         while self.running:
             try:
                 if consumer is None:
-                    consumer = KafkaConsumer(
-                        topic,
-                        bootstrap_servers=self.bootstrap_servers,
-                        group_id=f"{KAFKA_DASHBOARD_GROUP}-{topic}",
-                        value_deserializer=lambda m: json.loads(m.decode("utf-8")),
-                        auto_offset_reset="earliest",
-                        enable_auto_commit=True,
-                        consumer_timeout_ms=1000,
-                        api_version=(3, 5, 0),
-                    )
+                    conf = {
+                        'bootstrap.servers': self.bootstrap_servers,
+                        'group.id': f"{KAFKA_DASHBOARD_GROUP}-{topic}",
+                        'auto.offset.reset': 'earliest',
+                        'enable.auto.commit': True,
+                    }
+                    consumer = Consumer(conf)
+                    consumer.subscribe([topic])
                     print(f"[DashboardConsumer] Connected to topic: {topic}")
 
-                for message in consumer:
-                    if not self.running:
-                        break
-                    log_data = message.value
+                msg = consumer.poll(timeout=1.0)
+                if msg is None:
+                    continue
+
+                if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        continue
+                    print(f"[DashboardConsumer] Kafka error on {topic}: {msg.error()}")
+                    continue
+
+                try:
+                    log_data = json.loads(msg.value().decode("utf-8"))
+                except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                    print(f"[DashboardConsumer] Decode error on {topic}: {e}")
+                    continue
+
+                try:
+                    self.database.insert_log(log_data)
+                except Exception as e:
+                    print(f"[DashboardConsumer] DB insert error: {e}")
+
+                self.socketio.emit(event_name, log_data)
+
+            except KafkaException as e:
+                print(f"[DashboardConsumer] Kafka exception for {topic}: {e}, retrying in 5s...")
+                if consumer:
                     try:
-                        self.database.insert_log(log_data)
-                    except Exception as e:
-                        print(f"[DashboardConsumer] DB insert error: {e}")
-
-                    self.socketio.emit(event_name, log_data)
-
-            except NoBrokersAvailable:
-                print(f"[DashboardConsumer] Kafka not available for {topic}, retrying in 5s...")
+                        consumer.close()
+                    except Exception:
+                        pass
+                consumer = None
                 time.sleep(5)
             except Exception as e:
                 print(f"[DashboardConsumer] Error on {topic}: {e}")
-                time.sleep(2)
+                if consumer:
+                    try:
+                        consumer.close()
+                    except Exception:
+                        pass
                 consumer = None
+                time.sleep(2)
+
+        if consumer:
+            try:
+                consumer.close()
+            except Exception:
+                pass

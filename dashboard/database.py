@@ -55,7 +55,6 @@ class LogDatabase:
             CREATE INDEX IF NOT EXISTS idx_logs_anomaly ON logs(ml_is_anomaly);
             CREATE INDEX IF NOT EXISTS idx_logs_source_ip ON logs(source_ip);
             CREATE INDEX IF NOT EXISTS idx_logs_severity ON logs(severity);
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_agent_seq ON logs(agent, sequence);
 
             CREATE TABLE IF NOT EXISTS statistics (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,6 +69,10 @@ class LogDatabase:
             conn.commit()
         except sqlite3.OperationalError:
             pass # Column already exists
+            
+        # Create unique index after ensuring column exists
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_agent_seq ON logs(agent, sequence)")
+        conn.commit()
 
     def insert_log(self, log_data):
         conn = self._get_conn()

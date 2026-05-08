@@ -13,7 +13,7 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9094
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -64,12 +64,14 @@ services:
   spark-master:
     image: apache/spark:3.5.3
     container_name: spark-master
+    user: root
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master --host spark-master --port 7077 --webui-port 8080
     ports:
       - "8080:8080"   # Spark Master Web UI
       - "7077:7077"   # Spark Master Port
     environment:
       - SPARK_NO_DAEMONIZE=true
+      - SPARK_KAFKA_BOOTSTRAP=kafka:9092
     volumes:
       - spark_data:/opt/spark/work
       - .:/app
@@ -88,6 +90,7 @@ services:
   spark-worker:
     image: apache/spark:3.5.3
     container_name: spark-worker
+    user: root
     command: /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077 --webui-port 8081
     depends_on:
       spark-master:
@@ -98,6 +101,7 @@ services:
       - SPARK_NO_DAEMONIZE=true
       - SPARK_WORKER_MEMORY=2G
       - SPARK_WORKER_CORES=2
+      - SPARK_KAFKA_BOOTSTRAP=kafka:9092
     volumes:
       - spark_worker_data:/opt/spark/work
       - .:/app
