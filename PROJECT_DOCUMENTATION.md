@@ -107,7 +107,7 @@ A responsive, dark-mode web application providing immediate visibility into the 
 
 ### Prerequisites
 - **Docker & Docker Compose** — Required on all platforms (Windows, macOS, Linux)
-- **Python 3.8+** — For running the dashboard locally
+- **Python 3.9 - 3.12** — Recommended for local dashboard, tests, and tooling on Windows/macOS/Linux
 - **pip** — Python package manager
 
 > **Note:** Java and Hadoop are **NOT** required on your local machine. The Spark processor and log agents run entirely inside Docker containers.
@@ -128,11 +128,14 @@ Verify infrastructure is healthy:
 - Spark Master UI: http://localhost:8080
 - Spark Worker UI: http://localhost:8081
 
-The Spark processor runs **inside** the `spark-master` Docker container to avoid local environment issues. It is configured with an `earliest` offset policy to ensure no data loss:
+The Spark processor runs **inside** the `spark-master` container to avoid local Java/Hadoop issues.
+
+### Step 3: Start the Spark Processor *(new terminal)*
+
+Run Spark continuously in its own terminal:
 ```bash
 docker exec spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 /app/processing/spark_processor.py
 ```
-You should see: `[SparkProcessor] Streaming queries started. Waiting for data...`. The job will automatically resume from the last checkpoint or catch up on all pending logs.
 
 ### Step 4: Start the Dashboard *(new terminal)*
 ```bash
@@ -140,6 +143,8 @@ python dashboard/app.py
 ```
 *The dashboard will host on `http://localhost:5000`.*
 
+You should see:
+```text
 [DashboardConsumer] Connected to topic: processed-logs
 [DashboardConsumer] Connected to topic: anomalous-logs
 ```

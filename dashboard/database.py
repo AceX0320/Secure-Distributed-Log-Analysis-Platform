@@ -70,8 +70,13 @@ class LogDatabase:
         except sqlite3.OperationalError:
             pass # Column already exists
             
-        # Create unique index after ensuring column exists
-        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_agent_seq ON logs(agent, sequence)")
+        # Migration: previous versions used a unique index on (agent, sequence).
+        # That blocks valid new logs after agent restarts because sequence resets.
+        conn.execute("DROP INDEX IF EXISTS idx_logs_agent_seq")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_agent_seq_ts "
+            "ON logs(agent, sequence, timestamp)"
+        )
         conn.commit()
 
     def insert_log(self, log_data):

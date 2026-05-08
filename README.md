@@ -33,7 +33,7 @@ A production-grade distributed platform for scalable security log analysis featu
 ## Prerequisites
 
 * **Docker Desktop** — Required for all platforms (Windows, macOS, Linux)
-* **Python 3.8+** — For running the dashboard locally
+* **Python 3.9 - 3.12** — Recommended for local dashboard and tooling on Windows/macOS/Linux
 * **pip** — Python package manager
 
 > **Note:** Java and Hadoop are **NOT** required on your local machine. The Spark processor runs entirely inside the Docker container, so no local Java/Hadoop setup is needed.
@@ -59,6 +59,8 @@ Wait ~30 seconds for services to become healthy. Verify:
 * Kafka Broker: Topics created automatically by the `kafka-init` container
 * Spark Master UI: http://localhost:8080
 * Spark Worker UI: http://localhost:8081
+
+### Step 3: Start the Spark Processor *(new terminal)*
 
 Run the PySpark stream processing job inside the `spark-master` container. This job extracts features, calculates anomaly scores, and routes logs to the correct topics.
 
@@ -98,7 +100,7 @@ The platform is designed to handle intermittent service interruptions:
 *   **Kafka Persistence**: Kafka stores data in persistent Docker volumes.
 *   **Spark Checkpoints**: Spark uses the `./checkpoints` directory to track its progress. If you restart the processor, it resumes exactly where it left off.
 *   **Database Sync**: The dashboard automatically fetches recent history from `logs.db` on load, and its Kafka consumer uses an `earliest` policy to ensure no processed logs are missed during downtime.
-*   **Duplicate Prevention**: The database uses a unique constraint on `(agent, sequence)` to ensure that re-processed logs do not create duplicate entries.
+*   **Duplicate Prevention**: The database uses a unique constraint on `(agent, sequence, timestamp)` so exact replays are deduplicated while new runs (where agent sequence resets) still continue inserting correctly.
 
 ## Shutdown
 
@@ -205,7 +207,7 @@ All settings are in `config/settings.py` and can be overridden via environment v
 
 |Variable|Default|Description|
 |-|-|-|
-|KAFKA\_BOOTSTRAP\_SERVERS|localhost:9094|Kafka broker address|
+|KAFKA\_BOOTSTRAP\_SERVERS|127.0.0.1:9094|Kafka broker address|
 |SPARK\_MASTER\_URL|spark://localhost:7077|Spark master|
 |NUM\_AGENTS|3|Number of log agents|
 |ANOMALY\_PROBABILITY|0.15|Attack event probability|
