@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureLog | Distributed Log Analysis Platform</title>
+    <meta name="description" content="Real-time security log analysis dashboard with AI-powered anomaly detection">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.35.0.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header" id="main-header">
+        <div class="header-left">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                        <path d="M14 2L2 8v12l12 6 12-6V8L14 2z" stroke="url(#logoGrad)" stroke-width="2" fill="none"/>
+                        <path d="M14 8l-6 3v6l6 3 6-3v-6l-6-3z" fill="url(#logoGrad)" opacity="0.3"/>
+                        <circle cx="14" cy="14" r="3" fill="url(#logoGrad)"/>
+                        <defs><linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28">
+                            <stop stop-color="#00f5d4"/><stop offset="1" stop-color="#7b2ff7"/>
+                        </linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>SecureLog</h1>
+                    <span class="logo-subtitle">Distributed Log Analysis</span>
+                </div>
+            </div>
+        </div>
+        <div class="header-center">
+            <div class="status-indicator" id="connection-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="header-stat">
+                <span class="header-stat-label">Uptime</span>
+                <span class="header-stat-value" id="uptime">00:00:00</span>
+            </div>
+            <div class="header-stat">
+                <span class="header-stat-label">Events/min</span>
+                <span class="header-stat-value" id="events-per-min">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Stats Cards Row -->
+        <section class="stats-row" id="stats-section">
+            <div class="stat-card" id="stat-total-logs">
+                <div class="stat-icon stat-icon-blue">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-logs">0</span>
+                    <span class="stat-label">Total Logs</span>
+                </div>
+            </div>
+            <div class="stat-card stat-card-danger" id="stat-anomalies">
+                <div class="stat-icon stat-icon-red">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="total-anomalies">0</span>
+                    <span class="stat-label">Anomalies Detected</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-critical">
+                <div class="stat-icon stat-icon-orange">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="critical-events">0</span>
+                    <span class="stat-label">Critical Events</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-ips">
+                <div class="stat-icon stat-icon-green">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="unique-ips">0</span>
+                    <span class="stat-label">Unique Source IPs</span>
+                </div>
+            </div>
+            <div class="stat-card" id="stat-rate">
+                <div class="stat-icon stat-icon-purple">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-value" id="anomaly-rate">0%</span>
+                    <span class="stat-label">Anomaly Rate</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Charts Row -->
+        <section class="charts-row">
+            <div class="chart-card chart-card-wide" id="timeline-card">
+                <div class="chart-header">
+                    <h3>Log Volume & Anomaly Timeline</h3>
+                    <span class="chart-badge">Live</span>
+                </div>
+                <div class="chart-container" id="timeline-chart"></div>
+            </div>
+        </section>
+
+        <section class="charts-row">
+            <div class="chart-card" id="attack-dist-card">
+                <div class="chart-header">
+                    <h3>Attack Type Distribution</h3>
+                </div>
+                <div class="chart-container" id="attack-chart"></div>
+            </div>
+            <div class="chart-card" id="severity-card">
+                <div class="chart-header">
+                    <h3>Severity Distribution</h3>
+                </div>
+                <div class="chart-container" id="severity-chart"></div>
+            </div>
+            <div class="chart-card" id="top-ips-card">
+                <div class="chart-header">
+                    <h3>Top Suspicious IPs</h3>
+                </div>
+                <div class="chart-container" id="top-ips-chart"></div>
+            </div>
+        </section>
+
+        <!-- Live Feed Section -->
+        <section class="feed-section">
+            <div class="feed-card" id="log-feed-card">
+                <div class="chart-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00f5d4" stroke-width="2" style="margin-right:6px;vertical-align:middle"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                        All Events Stream
+                    </h3>
+                    <span class="feed-count" id="log-count">0 events</span>
+                </div>
+                <div class="feed-list" id="log-feed"></div>
+            </div>
+            <div class="feed-card" id="threat-feed-card">
+                <div class="chart-header">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff3860" stroke-width="2" style="margin-right:6px;vertical-align:middle"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Live Threat Feed
+                    </h3>
+                    <span class="feed-count" id="threat-count">0 threats</span>
+                </div>
+                <div class="feed-list" id="threat-feed"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <span>Secure Distributed Log Analysis Platform &mdash; Powered by Apache Kafka + Spark + Isolation Forest AI</span>
+    </footer>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
