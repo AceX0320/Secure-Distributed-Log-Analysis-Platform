@@ -65,7 +65,7 @@ Wait ~30 seconds for services to become healthy. Verify:
 Run the PySpark stream processing job inside the `spark-master` container. This job extracts features, calculates anomaly scores, and routes logs to the correct topics.
 
 ```bash
-docker exec spark-master /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 /app/processing/spark_processor.py
+docker exec spark-master /opt/spark/bin/spark-submit --master spark://spark-master:7077 --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 /app/processing/spark_processor.py
 ```
 
 You should see `[SparkProcessor] Streaming queries started. Waiting for data...` once it is ready. It will automatically catch up on any logs sent to Kafka while it was offline.
